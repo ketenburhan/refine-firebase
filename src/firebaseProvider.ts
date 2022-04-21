@@ -5,8 +5,10 @@ import {
   CrudFilters,
   CrudSorting,
   DataProvider,
+  LiveEvent,
   MetaDataQuery,
   Pagination,
+  LiveProvider,
 } from "@pankod/refine-core";
 import {
   getDatabase,
@@ -16,6 +18,9 @@ import {
   Database,
   remove,
   update,
+  Unsubscribe,
+  DataSnapshot,
+  onValue,
 } from "@firebase/database";
 import { FirebaseApp } from "@firebase/app";
 
@@ -374,6 +379,50 @@ export class FirebaseDataProvider {
       updateMany: this.updateManyData.bind(this),
       custom: this.customMethod.bind(this),
       getApiUrl: this.getAPIUrl.bind(this),
+    };
+  }
+}
+
+export class FirebaseLiveProvider {
+  database: Database;
+  constructor(firebaseApp: FirebaseApp) {
+    this.database = getDatabase(firebaseApp);
+  }
+
+  getRef(url: string) {
+    return ref(this.database, url);
+  }
+
+  subscribe(args: {
+    channel: string;
+    params?: {
+      ids?: BaseKey[];
+      [key: string]: any;
+    };
+    types: LiveEvent["type"][];
+    callback: (event: any) => void;
+  }): Unsubscribe {
+    let { channel, callback } = args;
+    const resource = channel.replace("resources/", "");
+    const databaseRef = this.getRef(resource);
+
+    let listener = (snapshot: DataSnapshot) => {
+      callback({
+        channel,
+      });
+    };
+
+    // TODO: add types support
+
+    return onValue(databaseRef, listener);
+  }
+  unsubscribe(unsub: Unsubscribe) {
+    unsub();
+  }
+  getProvider(): LiveProvider {
+    return {
+      subscribe: this.subscribe.bind(this),
+      unsubscribe: this.subscribe.bind(this),
     };
   }
 }
