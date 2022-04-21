@@ -106,7 +106,7 @@ export class FirebaseDataProvider {
     return ref(this.database, url);
   }
 
-  async createData<TData extends BaseRecord = BaseRecord, TVariables = {}>({
+  async createData<TVariables = {}>({
     resource,
     variables,
   }: {
