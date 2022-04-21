@@ -25,35 +25,50 @@ const applyFilter = (
 ): any[] | undefined => {
   if (filter.operator == "or" || !data) return;
 
+  let filterFn: (value: any) => boolean;
+
+  switch (filter.operator) {
+    case "eq":
+      filterFn = (value: any) => value == filter.value;
+      break;
+    case "ne":
+      filterFn = (value: any) => value != filter.value;
+      break;
+    case "lt":
+      filterFn = (value: any) => value < filter.value;
+      break;
+    case "gt":
+      filterFn = (value: any) => value > filter.value;
+      break;
+    case "lte":
+      filterFn = (value: any) => value <= filter.value;
+      break;
+    case "gte":
+      filterFn = (value: any) => value >= filter.value;
+      break;
+    case "null":
+      filterFn = (value: any) => !value;
+      break;
+    case "nnull":
+      filterFn = (value: any) => !!value;
+      break;
+    case "in":
+      filterFn = (value: any) => filter.value.includes(value);
+      break;
+    case "nin":
+      filterFn = (value: any) => !filter.value.includes(value);
+      break;
+    default:
+      filterFn = () => true;
+  }
+
   let out = data.filter((obj: any) => {
     let value = obj;
     for (let f of filter.field.split(".")) {
       value = value[f];
     }
-    switch (filter.operator) {
-      case "eq":
-        return value == filter.value;
-      case "ne":
-        return value != filter.value;
-      case "lt":
-        return value < filter.value;
-      case "gt":
-        return value > filter.value;
-      case "lte":
-        return value <= filter.value;
-      case "gte":
-        return value >= filter.value;
-      case "null":
-        return !value;
-      case "nnull":
-        return !!value;
-      case "in":
-        return filter.value.includes(value);
-      case "nin":
-        return !filter.value.includes(value);
-      default:
-        return true;
-    }
+
+    return filterFn(value);
   });
 
   return out;
