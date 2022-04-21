@@ -1,0 +1,24 @@
+{
+  "name": "refine-firebase",
+  "version": "0.1.0",
+  "description": "",
+  "main": "lib/index.js",
+  "scripts": {
+    "dev": "tsc --watch --preserveWatchOutput",
+    "build": "tsc"
+  },
+  "keywords": [
+    "firebase",
+    "refine"
+  ],
+  "author": "Burhan Keten",
+  "license": "MIT",
+  "dependencies": {
+    "@firebase/app": "^0.7.21",
+    "@firebase/database": "^0.12.8",
+    "@pankod/refine-core": "^3.14.2"
+  },
+  "devDependencies": {
+    "typescript": "^4.6.3"
+  }
+}
