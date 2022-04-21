@@ -1,20 +1,12 @@
 import {
+  BaseKey,
   BaseRecord,
-  CreateManyResponse,
-  CreateResponse,
   CrudFilter,
   CrudFilters,
   CrudSorting,
-  CustomResponse,
-  DeleteManyResponse,
-  DeleteOneResponse,
-  GetListResponse,
-  GetManyResponse,
-  GetOneResponse,
+  DataProvider,
   MetaDataQuery,
   Pagination,
-  UpdateManyResponse,
-  UpdateResponse,
 } from "@pankod/refine-core";
 import {
   getDatabase,
@@ -26,113 +18,6 @@ import {
   update,
 } from "@firebase/database";
 import { FirebaseApp } from "@firebase/app";
-
-declare interface ICreateData<TVariables> {
-  resource: string;
-  variables: TVariables;
-  metaData?: MetaDataQuery;
-}
-
-declare interface IDeleteData {
-  resource: string;
-  id: string;
-  metaData?: MetaDataQuery;
-}
-
-declare interface IDeleteManyData {
-  resource: string;
-  ids: string[];
-  metaData?: MetaDataQuery;
-}
-
-declare interface IGetList {
-  resource: string;
-  pagination?: Pagination;
-  sort?: CrudSorting;
-  filters?: CrudFilters;
-  metaData?: MetaDataQuery;
-}
-
-declare interface IGetOne {
-  resource: string;
-  id: string;
-  metaData?: MetaDataQuery;
-}
-
-declare interface IGetMany extends Omit<IGetOne, "id"> {
-  ids: Array<string>;
-}
-
-declare interface IUpdateData<TVariables> extends ICreateData<TVariables> {
-  id?: string;
-}
-
-declare interface IUpdateManyData<TVariables> extends ICreateData<TVariables> {
-  ids: Array<string>;
-}
-
-interface IDataContextProvider {
-  getList: <TData extends BaseRecord = BaseRecord>(params: {
-    resource: string;
-    pagination?: Pagination;
-    sort?: CrudSorting;
-    filters?: CrudFilters;
-    metaData?: MetaDataQuery;
-  }) => Promise<GetListResponse<TData>>;
-  getMany: <TData extends BaseRecord = BaseRecord>(params: {
-    resource: string;
-    ids: string[];
-    metaData?: MetaDataQuery;
-  }) => Promise<GetManyResponse<TData>>;
-  getOne: <TData extends BaseRecord = BaseRecord>(params: {
-    resource: string;
-    id: string;
-    metaData?: MetaDataQuery;
-  }) => Promise<GetOneResponse<TData>>;
-  create: <TData extends BaseRecord = BaseRecord, TVariables = {}>(params: {
-    resource: string;
-    variables: TVariables;
-    metaData?: MetaDataQuery;
-  }) => Promise<CreateResponse<TData>>;
-  createMany: <TData extends BaseRecord = BaseRecord, TVariables = {}>(params: {
-    resource: string;
-    variables: TVariables[];
-    metaData?: MetaDataQuery;
-  }) => Promise<CreateManyResponse<TData>>;
-  update: <TData extends BaseRecord = BaseRecord, TVariables = {}>(params: {
-    resource: string;
-    id: string;
-    variables: TVariables;
-    metaData?: MetaDataQuery;
-  }) => Promise<UpdateResponse<TData>>;
-  updateMany: <TData extends BaseRecord = BaseRecord, TVariables = {}>(params: {
-    resource: string;
-    ids: string[];
-    variables: TVariables;
-    metaData?: MetaDataQuery;
-  }) => Promise<UpdateManyResponse<TData>>;
-  deleteOne: <TData extends BaseRecord = BaseRecord>(params: {
-    resource: string;
-    id: string;
-    metaData?: MetaDataQuery;
-  }) => Promise<DeleteOneResponse<TData>>;
-  deleteMany: <TData extends BaseRecord = BaseRecord>(params: {
-    resource: string;
-    ids: string[];
-    metaData?: MetaDataQuery;
-  }) => Promise<DeleteManyResponse<TData>>;
-  getApiUrl: () => string;
-  custom?: <TData extends BaseRecord = BaseRecord>(params: {
-    url: string;
-    method: "get" | "delete" | "head" | "options" | "post" | "put" | "patch";
-    sort?: CrudSorting;
-    filters?: CrudFilter[];
-    payload?: {};
-    query?: {};
-    headers?: {};
-    metaData?: MetaDataQuery;
-  }) => Promise<CustomResponse<TData>>;
-}
 
 const applyFilter = (
   data: any[] | undefined,
@@ -206,14 +91,19 @@ export class FirebaseDataProvider {
     return ref(this.database, url);
   }
 
-  async createData<TVariables = {}>(
-    args: ICreateData<TVariables>
-  ): Promise<any> {
+  async createData<TData extends BaseRecord = BaseRecord, TVariables = {}>({
+    resource,
+    variables,
+  }: {
+    resource: string;
+    variables: TVariables;
+    metaData?: MetaDataQuery;
+  }): Promise<any> {
     try {
-      const id = await this.getCreateId(this, args.resource);
-      const databaseRef = this.getRef(`${args.resource}/${id}`);
+      const id = await this.getCreateId(this, resource);
+      const databaseRef = this.getRef(`${resource}/${id}`);
       const payload = {
-        ...args.variables,
+        ...variables,
         id,
       };
 
@@ -225,9 +115,11 @@ export class FirebaseDataProvider {
     }
   }
 
-  async createManyData<TVariables = {}>(
-    args: ICreateData<TVariables[]>
-  ): Promise<any> {
+  async createManyData<TVariables = {}>(args: {
+    resource: string;
+    variables: TVariables[];
+    metaData?: MetaDataQuery;
+  }): Promise<any> {
     try {
       // Since createData waits getCreateId function during creation,
       // createData calls must be serialized to overcome id conflict.
@@ -239,7 +131,15 @@ export class FirebaseDataProvider {
     }
   }
 
-  async deleteData({ resource, id }: IDeleteData): Promise<any> {
+  async deleteData<TVariables = {}>({
+    resource,
+    id,
+  }: {
+    resource: string;
+    id: BaseKey;
+    variables?: TVariables;
+    metaData?: MetaDataQuery;
+  }): Promise<any> {
     try {
       const databaseRef = this.getRef(`${resource}/${id}`);
       await remove(databaseRef);
@@ -248,7 +148,15 @@ export class FirebaseDataProvider {
     }
   }
 
-  async deleteManyData({ ids, resource }: IDeleteManyData): Promise<any> {
+  async deleteManyData<TVariables = {}>({
+    ids,
+    resource,
+  }: {
+    resource: string;
+    ids: BaseKey[];
+    variables?: TVariables;
+    metaData?: MetaDataQuery;
+  }): Promise<any> {
     try {
       await Promise.all(
         ids.map(async (id) => {
@@ -265,7 +173,14 @@ export class FirebaseDataProvider {
     pagination,
     sort,
     filters,
-  }: IGetList): Promise<any> {
+  }: {
+    resource: string;
+    pagination?: Pagination;
+    sort?: CrudSorting;
+    filters?: CrudFilters;
+    metaData?: MetaDataQuery;
+    dataProviderName?: string;
+  }): Promise<any> {
     try {
       const databaseRef = this.getRef(resource);
 
@@ -325,9 +240,16 @@ export class FirebaseDataProvider {
     }
   }
 
-  async getOne(args: IGetOne): Promise<any> {
+  async getOne({
+    resource,
+    id,
+  }: {
+    resource: string;
+    id: BaseKey;
+    metaData?: MetaDataQuery;
+  }): Promise<any> {
     try {
-      const databaseRef = this.getRef(args.resource + "/" + args.id);
+      const databaseRef = this.getRef(resource + "/" + id);
 
       let snapshot = await get(databaseRef);
 
@@ -343,9 +265,16 @@ export class FirebaseDataProvider {
     }
   }
 
-  async getMany(args: IGetMany): Promise<any> {
+  async getMany({
+    resource,
+    ids,
+  }: {
+    resource: string;
+    ids: BaseKey[];
+    metaData?: MetaDataQuery;
+    dataProviderName?: string;
+  }): Promise<any> {
     try {
-      let { resource, ids } = args;
       const databaseRef = this.getRef(resource);
 
       let snapshot = await get(databaseRef);
@@ -362,29 +291,43 @@ export class FirebaseDataProvider {
     }
   }
 
-  async updateData<TVariables = {}>(
-    args: IUpdateData<TVariables>
-  ): Promise<any> {
+  async updateData<TVariables = {}>({
+    resource,
+    id,
+    variables,
+  }: {
+    resource: string;
+    id: BaseKey;
+    variables: TVariables;
+    metaData?: MetaDataQuery;
+  }): Promise<any> {
     try {
-      const databaseRef = this.getRef(`${args.resource}/${args.id}`);
+      const databaseRef = this.getRef(`${resource}/${id}`);
 
-      await update(databaseRef, args.variables as {});
+      await update(databaseRef, variables as {});
 
-      return { data: args.variables };
+      return { data: variables };
     } catch (error) {
       Promise.reject(error);
     }
   }
 
-  async updateManyData<TVariables = {}>(
-    args: IUpdateManyData<TVariables>
-  ): Promise<any> {
+  async updateManyData<TVariables = {}>({
+    ids,
+    resource,
+    variables,
+  }: {
+    resource: string;
+    ids: BaseKey[];
+    variables: TVariables;
+    metaData?: MetaDataQuery;
+  }): Promise<any> {
     try {
       let data: Array<any> = [];
-      args.ids.forEach(async (id: string) => {
+      ids.forEach(async (id: BaseKey) => {
         const result = this.updateData({
-          resource: args.resource,
-          variables: args.variables,
+          resource,
+          variables,
           id,
         });
         data.push(result);
@@ -403,7 +346,7 @@ export class FirebaseDataProvider {
     return "";
   }
 
-  getProvider(): IDataContextProvider {
+  getProvider(): DataProvider {
     return {
       create: this.createData.bind(this),
       createMany: this.createManyData.bind(this),
