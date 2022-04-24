@@ -90,7 +90,6 @@ export const biggestIdPlusOneStrategy = async (
 
   if (snapshot?.exists()) {
     let data: any[] = snapshot.val();
-    console.log(data);
     return (
       data
         .map((item) => Number(item.id))
@@ -117,7 +116,6 @@ export const biggestIdPlusOneStrategyIndexing = async (
 
   if (snapshot?.exists()) {
     let data: { [key: string]: any } = snapshot.val();
-    console.log(data);
     let highestId = Object.values(data)[0].id;
     return highestId + 1;
   } else {
