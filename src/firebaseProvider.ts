@@ -1,6 +1,5 @@
 import {
   BaseKey,
-  BaseRecord,
   CrudFilter,
   CrudFilters,
   CrudSorting,
@@ -21,6 +20,9 @@ import {
   Unsubscribe,
   DataSnapshot,
   onValue,
+  orderByChild,
+  query,
+  limitToLast,
 } from "@firebase/database";
 import { FirebaseApp } from "@firebase/app";
 
@@ -79,7 +81,7 @@ const applyFilter = (
   return out;
 };
 
-const biggestIdPlusOneStrategy = async (
+export const biggestIdPlusOneStrategy = async (
   provider: FirebaseDataProvider,
   resource: string
 ): Promise<number> => {
@@ -88,11 +90,36 @@ const biggestIdPlusOneStrategy = async (
 
   if (snapshot?.exists()) {
     let data: any[] = snapshot.val();
+    console.log(data);
     return (
       data
         .map((item) => Number(item.id))
         .reduce((max, current) => (current > max ? current : max), 0) + 1
     );
+  } else {
+    return Promise.reject("");
+  }
+};
+
+// recommended
+// To use this method as create-id generator, `.indexOn` rule must be set for .
+// https://firebase.google.com/docs/database/security/indexing-data
+export const biggestIdPlusOneStrategyIndexing = async (
+  provider: FirebaseDataProvider,
+  resource: string
+): Promise<number> => {
+  const databaseRef = query(
+    provider.getRef(resource),
+    orderByChild("id"),
+    limitToLast(1)
+  );
+  let snapshot = await get(databaseRef);
+
+  if (snapshot?.exists()) {
+    let data: { [key: string]: any } = snapshot.val();
+    console.log(data);
+    let highestId = Object.values(data)[0].id;
+    return highestId + 1;
   } else {
     return Promise.reject("");
   }
